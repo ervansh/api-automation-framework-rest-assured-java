@@ -17,13 +17,12 @@ public final class TokenRefreshFilter implements Filter {
                            FilterableResponseSpecification responseSpecification,
                            FilterContext context) {
         String previousToken = tokenManager.accessToken();
-        request.header("Authorization", "Bearer " + previousToken);
+        request.replaceHeader("Authorization", "Bearer " + previousToken);
         Response response = context.next(request, responseSpecification);
         if (response.statusCode() != 401) return response;
 
         String refreshedToken = tokenManager.refreshAccessToken(previousToken);
-        request.removeHeader("Authorization");
-        request.header("Authorization", "Bearer " + refreshedToken);
+        request.replaceHeader("Authorization", "Bearer " + refreshedToken);
         return context.next(request, responseSpecification);
     }
 }
