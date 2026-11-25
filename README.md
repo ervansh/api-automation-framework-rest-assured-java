@@ -111,3 +111,32 @@ DummyJSON is intended for development/testing. It returns realistic sample data,
 ## CI and reports
 
 GitHub Actions runs `mvn --batch-mode --no-transfer-progress clean verify`. TestNG/Surefire reports are written to `target/surefire-reports/`.
+
+
+## Framework execution features
+
+- **Reusable specifications:** `RequestSpecFactory` creates fresh JSON request specifications; `ResponseSpecFactory` provides reusable HTTP 200/201 JSON response contracts.
+- **Reusable assertions:** `ApiAssertions` centralizes status, JSON content-type and response-time checks.
+- **Test data:** `ProductTestData` supplies deterministic product IDs and product-creation DTOs through TestNG data providers.
+- **Test organization:** tests are grouped as `configuration`, `smoke` and `regression`. The checked-in `testng.xml` suite is the Maven Surefire entry point.
+- **Parallel execution:** TestNG runs independent suite tests concurrently and data-provider cases on a bounded pool. API requests use fresh REST Assured specifications; token refresh is guarded by a lock. Avoid sharing mutable test fixtures between parallel tests.
+- **Lifecycle logging:** `TestExecutionListener` logs test start/end and pass/fail/skip outcomes. It deliberately does not log request bodies, credentials or bearer tokens.
+- **Reports:** Maven Surefire writes machine-readable XML and text reports to `target/surefire-reports/`. TestNG also produces its standard suite report output.
+
+Run the suite:
+
+```bash
+mvn --batch-mode clean verify
+```
+
+Select an environment profile:
+
+```bash
+mvn clean verify -Dtest.environment=qa
+mvn clean verify -Dtest.environment=staging -Dapi.baseUri=https://your-staging-host
+mvn clean verify -Dtest.environment=prod -Dapi.baseUri=https://your-approved-production-host
+```
+
+The staging and production profile files intentionally do not define a target URI. Supply the correct endpoint explicitly; do not run destructive or authentication test scenarios against production.
+
+Run selected TestNG groups by overriding suite configuration or creating a dedicated suite XML. The default suite includes configuration, smoke and regression groups. The refresh-expiry test waits beyond the one-minute demo token lifetime and therefore adds about 65 seconds to a full run.
