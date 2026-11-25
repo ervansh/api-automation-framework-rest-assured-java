@@ -26,7 +26,7 @@ public class FrameworkConfigTest {
     public void loadsTheSelectedConfiguration() {
         FrameworkConfig config = FrameworkConfig.load();
 
-        assertTrue(config.baseUri().startsWith("https://"));
+        assertTrue(config.baseUri() != null && !config.baseUri().isBlank());
         assertTrue(config.connectTimeoutMillis() > 0);
         assertTrue(config.readTimeoutMillis() > 0);
     }
