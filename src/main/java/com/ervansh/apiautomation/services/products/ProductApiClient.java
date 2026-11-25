@@ -32,6 +32,6 @@ public final class ProductApiClient {
     }
 
     public Response getCurrentUser() {
-        return api.request().filter(new TokenRefreshFilter(tokenManager)).get("/auth/me");
+        return api.authenticatedRequest(tokenManager).get("/auth/me");
     }
 }
