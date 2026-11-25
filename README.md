@@ -1,24 +1,25 @@
 # API Automation Framework — Java + REST Assured
 
-A maintainable API automation framework foundation using Java 21, Maven, REST Assured, and TestNG. It supports service-level tests and can be extended for cross-service business workflows. The checked-in product client is an illustrative sample, not a verified production API contract.
+A Java 21, Maven, REST Assured and TestNG framework using the publicly hosted **DummyJSON** API as its ecommerce/authentication test system. It sends real HTTP requests to `https://dummyjson.com`; there are no in-process HTTP stubs. DummyJSON is a test-data service: product writes are simulated and are not persisted.
 
 ## Implemented
 
-- Immutable, validated environment configuration with system-property > environment-variable > properties-file precedence.
-- Shared REST Assured request factory with base URI, JSON defaults, and connection/read timeouts.
-- Optional bearer authentication, with token injection from a JVM property or environment variable.
-- Sample product service client and product model to demonstrate the service-client boundary.
-- TestNG checks for configuration, bearer auth behavior, and service-client behavior.
-- In-process HTTP tests for the shared client and sample operations. They do not require a live API.
-- GitHub Actions workflow running Maven verification on pushes, pull requests, and manual dispatch.
+- Environment configuration and request timeouts.
+- DummyJSON authentication: login, access/refresh token storage, refresh endpoint.
+- REST Assured filter: on HTTP 401, refreshes once and retries the original request once; it does not retry other statuses or loop.
+- Ecommerce product list/detail/create operations.
+- Java record request/response DTOs for JSON serialization and deserialization, including nested product dimensions, metadata and reviews.
+- JSON Schema validation for product, product-list and login responses.
+- TestNG integration tests against public DummyJSON endpoints.
 
 ## Technology baseline
 
 | Component | Version |
-|---|---|
+|---|---:|
 | Java | 21 |
 | REST Assured | 6.3.0 |
 | TestNG | 7.9.0 |
+| Jackson Databind | 2.23.0 |
 | Maven Compiler Plugin | 3.14.1 |
 | Maven Surefire Plugin | 3.6.1 |
 
@@ -28,71 +29,85 @@ Versions are centralized in `pom.xml`.
 
 ```text
 src/main/java/com/ervansh/apiautomation/
-  core/
-    client/       # Shared request factory and bearer token provider
-    config/       # Environment configuration and validation
-  services/
-    products/
-      model/      # Product request/response model
-      ProductApiClient.java
-
+  core/auth/       # Auth API, token pair, token manager and 401 refresh filter
+  core/client/     # Shared REST Assured request factory
+  core/config/     # Environment configuration
+  services/products/
+    model/         # Product, product-list and create-product DTOs
+    ProductApiClient.java
 src/test/java/com/ervansh/apiautomation/
-  core/           # Core configuration, client, and auth tests
-  services/       # Service-client tests against local HTTP stubs
-src/test/resources/config/
-  qa.properties
+  services/products/ # Live DummyJSON integration tests
+src/test/resources/
+  config/qa.properties
+  schemas/         # JSON Schema contracts
 .github/workflows/ci.yml
 ```
 
+## Public API contract used
+
+Base URL: `https://dummyjson.com`
+
+| Purpose | Method | Endpoint |
+|---|---|---|
+| Login | POST | `/auth/login` |
+| Current authenticated user | GET | `/auth/me` |
+| Refresh session | POST | `/auth/refresh` |
+| Product list | GET | `/products?limit=5&skip=0` |
+| Product details | GET | `/products/{id}` |
+| Search products | GET | `/products/search?q=phone` |
+| Simulated product creation | POST | `/products/add` |
+
+The provider documents the demo credentials `emilys` / `emilyspass`. They are public test credentials, not private secrets. For a different environment, override them rather than editing source.
+
 ## Build and run
 
-Prerequisites: JDK 21 and Maven 3.9 or later.
+Prerequisites: JDK 21 and Maven 3.9+.
 
 ```bash
-java -version
-mvn -version
 mvn --batch-mode clean verify
 ```
 
-Select the configuration profile using `-Dtest.environment=<name>`. The matching resource must exist at `src/test/resources/config/<name>.properties`.
+Override configuration without changing source:
 
 ```bash
-mvn clean verify -Dtest.environment=qa
+mvn clean verify -Dapi.baseUri=https://dummyjson.com
+mvn clean verify -Dapi.test.username=emilys -Dapi.test.password=emilyspass
 ```
 
-## Configuration
+Supported environment overrides:
 
-| Property | Environment variable | Meaning |
+| JVM property | Environment variable | Purpose |
 |---|---|---|
 | `api.baseUri` | `API_BASE_URI` | API base URI |
 | `api.connectTimeoutMillis` | `API_CONNECT_TIMEOUT_MILLIS` | Connect timeout |
-| `api.readTimeoutMillis` | `API_READ_TIMEOUT_MILLIS` | Socket/read timeout |
+| `api.readTimeoutMillis` | `API_READ_TIMEOUT_MILLIS` | Read timeout |
+| `api.test.username` | `API_TEST_USERNAME` | Test user |
+| `api.test.password` | `API_TEST_PASSWORD` | Test password |
+| `api.test.tokenLifetimeMinutes` | `API_TEST_TOKEN_LIFETIME_MINUTES` | Requested access-token lifetime |
 
-For each value, override precedence is JVM system property, environment variable, then selected properties file. The environment name is selected by `-Dtest.environment`, then `TEST_ENVIRONMENT`, and defaults to `qa`.
+## Token lifecycle and refresh
 
-The checked-in `qa.properties` uses `https://example.invalid` as a non-routable placeholder. The local stub tests create their own loopback server and do not use that base URI. Configure a real base URI before adding integration tests for a target service.
+1. `TokenManager` lazily logs in and retains both tokens in memory.
+2. `TokenRefreshFilter` adds the current access token to the protected request.
+3. Only an HTTP 401 triggers refresh.
+4. The filter calls `/auth/refresh`, updates the token pair and retries the original request once.
+5. A second 401 is returned to the test; there is no infinite retry.
+6. A lock prevents concurrent requests from needlessly refreshing the same rejected token.
 
-## Authentication and secret handling
+This is a test-framework implementation. A production token lifecycle must also follow the target identity provider's refresh-token rotation, revocation, clock-skew and concurrency rules.
 
-The unauthenticated `ApiClient.request()` creates a fresh request specification. Use `ApiClient.authenticatedRequest()` when the target endpoint requires bearer authentication. The token is read from `-Dapi.bearerToken` first, then `API_BEARER_TOKEN`; missing tokens fail fast. Do not commit or print credentials. For CI, inject secrets through the repository/environment secret store.
+## Serialization and deserialization
 
-This supports bearer tokens only. Add other authentication mechanisms only when the target API requires them.
+REST Assured/Jackson serializes `CreateProductRequest` to JSON when passed to `.body(request)`. The response is deserialized into `Product` or `ProductListResponse` using `.as(Product.class)`. The product model includes nested `Dimensions`, `Meta` and `Review` records to demonstrate nested JSON mapping.
 
-## Extending for a real API
+## Schema validation
 
-1. Confirm the API's documented paths, payload schemas, status codes, and authentication scheme.
-2. Add a service client under `services/<service>`; keep endpoint-specific request construction there.
-3. Add request/response models matching the actual contract.
-4. Put business assertions in TestNG tests, not in the shared HTTP client.
-5. Use isolated test data and avoid shared mutable request state in parallel tests.
-6. Keep TLS certificate validation enabled outside explicitly controlled local test setups.
+JSON Schema files live under `src/test/resources/schemas`. Tests validate response structure and types independently of Java DTO mapping. Keep schemas aligned with the provider's published response contract; do not make optional provider fields mandatory without confirming the contract.
 
-The sample `/products` paths and fields are illustrative. Replace them with the target API contract before treating those tests as service acceptance tests.
+## Important test-data limitations
+
+DummyJSON is intended for development/testing. It returns realistic sample data, but create/update/delete operations are simulated and are not durable business transactions. The public API is external, so CI tests require internet access and can be affected by provider availability/rate limiting. These are integration tests, not isolated unit tests.
 
 ## CI and reports
 
-The GitHub Actions workflow runs `mvn --batch-mode --no-transfer-progress clean verify`. Maven Surefire writes TestNG results under `target/surefire-reports/` after a successful local run or CI job.
-
-## Scope
-
-This is a reusable framework foundation with a controlled sample service test. It does not include a target-system contract, schema validation, retry policy, external test-data management, cross-service workflows, or production service acceptance tests. Those depend on the actual API contracts and should not be guessed.
+GitHub Actions runs `mvn --batch-mode --no-transfer-progress clean verify`. TestNG/Surefire reports are written to `target/surefire-reports/`.
