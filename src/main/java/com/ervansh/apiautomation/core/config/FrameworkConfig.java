@@ -18,6 +18,18 @@ public record FrameworkConfig(String baseUri, int connectTimeoutMillis, int read
         if (baseUri == null || baseUri.isBlank()) {
             throw new IllegalArgumentException("api.baseUri must be configured");
         }
+        java.net.URI parsedUri;
+        try {
+            parsedUri = java.net.URI.create(baseUri.trim());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("api.baseUri must be a valid absolute HTTP(S) URI", exception);
+        }
+        if (!parsedUri.isAbsolute()
+                || !("http".equalsIgnoreCase(parsedUri.getScheme())
+                || "https".equalsIgnoreCase(parsedUri.getScheme()))
+                || parsedUri.getHost() == null) {
+            throw new IllegalArgumentException("api.baseUri must be a valid absolute HTTP(S) URI");
+        }
         if (connectTimeoutMillis <= 0 || readTimeoutMillis <= 0) {
             throw new IllegalArgumentException("API timeouts must be positive");
         }
@@ -29,6 +41,9 @@ public record FrameworkConfig(String baseUri, int connectTimeoutMillis, int read
                 System.getProperty("test.environment"),
                 System.getenv("TEST_ENVIRONMENT"),
                 DEFAULT_ENVIRONMENT);
+        if (!environment.matches("[a-zA-Z0-9_-]+")) {
+            throw new IllegalArgumentException("Invalid test.environment profile name");
+        }
 
         Properties properties = new Properties();
         String resource = CONFIG_DIRECTORY + environment + ".properties";
