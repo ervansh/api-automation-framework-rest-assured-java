@@ -9,6 +9,7 @@ import com.ervansh.apiautomation.services.products.model.Product;
 import com.ervansh.apiautomation.services.products.model.ProductListResponse;
 import com.ervansh.apiautomation.testdata.ProductTestData;
 import com.ervansh.apiautomation.core.client.ResponseSpecFactory;
+import com.ervansh.apiautomation.assertions.ApiAssertions;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -38,7 +39,9 @@ public class ProductApiClientTest {
     @Test(groups = {"smoke", "regression"})
     public void productListMatchesJsonSchemaAndDeserializes() {
         var response = products.getAll(5, 0);
-        response.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/product-list.schema.json"));
+        ApiAssertions.assertStatus(response, 200);
+        ApiAssertions.assertJsonContentType(response);
+        response.then().body(matchesJsonSchemaInClasspath("schemas/product-list.schema.json"));
         ProductListResponse result = response.as(ProductListResponse.class);
         assertEquals(result.products().size(), 5);
         assertTrue(result.total() >= result.products().size());
@@ -69,7 +72,8 @@ public class ProductApiClientTest {
             groups = {"regression"})
     public void productCreateSerializesRequestAndDeserializesResponse(CreateProductRequest request) {
         var response = products.create(request);
-        response.then().statusCode(201);
+        ApiAssertions.assertStatus(response, 201);
+        ApiAssertions.assertJsonContentType(response);
         assertEquals(response.jsonPath().getString("title"), request.title());
         assertEquals(response.jsonPath().getDouble("price"), request.price());
         // DummyJSON simulates this write; it does not persist the product.
