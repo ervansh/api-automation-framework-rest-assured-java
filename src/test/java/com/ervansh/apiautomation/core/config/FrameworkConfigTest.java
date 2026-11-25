@@ -7,7 +7,7 @@ import static org.testng.Assert.assertThrows;
 import static org.testng.Assert.assertTrue;
 
 public class FrameworkConfigTest {
-    @Test
+    @Test(groups = "configuration")
     public void normalizesBaseUriAndAcceptsPositiveTimeouts() {
         FrameworkConfig config = new FrameworkConfig("https://api.example.test///", 2_000, 5_000);
 
@@ -16,13 +16,13 @@ public class FrameworkConfigTest {
         assertEquals(config.readTimeoutMillis(), 5_000);
     }
 
-    @Test
+    @Test(groups = "configuration")
     public void rejectsNonPositiveTimeouts() {
         assertThrows(IllegalArgumentException.class,
                 () -> new FrameworkConfig("https://api.example.test", 0, 5_000));
     }
 
-    @Test
+    @Test(groups = "configuration")
     public void loadsTheSelectedConfiguration() {
         FrameworkConfig config = FrameworkConfig.load();
 
