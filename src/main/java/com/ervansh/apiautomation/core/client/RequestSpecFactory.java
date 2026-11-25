@@ -21,4 +21,11 @@ public final class RequestSpecFactory {
                 .accept("application/json")
                 .contentType("application/json");
     }
+
+    public RequestSpecification authenticatedJson(
+            com.ervansh.apiautomation.core.auth.TokenManager tokenManager) {
+        return apiClient.authenticatedRequest(tokenManager)
+                .accept("application/json")
+                .contentType("application/json");
+    }
 }
