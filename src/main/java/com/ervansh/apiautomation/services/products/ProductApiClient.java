@@ -1,20 +1,20 @@
 package com.ervansh.apiautomation.services.products;
 
 import com.ervansh.apiautomation.core.auth.TokenManager;
-import com.ervansh.apiautomation.core.auth.TokenRefreshFilter;
 import com.ervansh.apiautomation.core.client.ApiClient;
+import com.ervansh.apiautomation.core.client.RequestSpecFactory;
 import com.ervansh.apiautomation.services.products.model.CreateProductRequest;
 import io.restassured.response.Response;
 
 public final class ProductApiClient {
     private final ApiClient api;
     private final TokenManager tokenManager;
-    private final com.ervansh.apiautomation.core.client.RequestSpecFactory requests;
+    private final RequestSpecFactory requests;
 
     public ProductApiClient(ApiClient api, TokenManager tokenManager) {
         this.api = api;
         this.tokenManager = tokenManager;
-        this.requests = new com.ervansh.apiautomation.core.client.RequestSpecFactory(api);
+        this.requests = new RequestSpecFactory(api);
     }
 
     public Response getById(int productId) {
@@ -26,7 +26,7 @@ public final class ProductApiClient {
     }
 
     public Response search(String query) {
-        return api.request().queryParam("q", query).get("/products/search");
+        return requests.json().queryParam("q", query).get("/products/search");
     }
 
     public Response create(CreateProductRequest product) {
