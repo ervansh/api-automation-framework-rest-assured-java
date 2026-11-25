@@ -7,6 +7,8 @@ import com.ervansh.apiautomation.core.config.FrameworkConfig;
 import com.ervansh.apiautomation.services.products.model.CreateProductRequest;
 import com.ervansh.apiautomation.services.products.model.Product;
 import com.ervansh.apiautomation.services.products.model.ProductListResponse;
+import com.ervansh.apiautomation.testdata.ProductTestData;
+import com.ervansh.apiautomation.core.client.ResponseSpecFactory;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -33,7 +35,7 @@ public class ProductApiClientTest {
         products = new ProductApiClient(api, tokens);
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression"})
     public void productListMatchesJsonSchemaAndDeserializes() {
         var response = products.getAll(5, 0);
         response.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/product-list.schema.json"));
@@ -43,10 +45,19 @@ public class ProductApiClientTest {
         assertNotNull(result.products().getFirst().title());
     }
 
-    @Test
+    @Test(dataProvider = "validProductIds", dataProviderClass = ProductTestData.class,
+            groups = {"smoke", "regression"})
+    public void productDetailsAreAvailableForKnownIds(int productId) {
+        var response = products.getById(productId);
+        response.then().spec(ResponseSpecFactory.jsonOk());
+        assertEquals(response.jsonPath().getInt("id"), productId);
+    }
+
+    @Test(groups = {"smoke", "regression"})
     public void productDetailsMatchSchemaAndDeserializeNestedObjects() {
         var response = products.getById(1);
-        response.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/product.schema.json"));
+        response.then().spec(ResponseSpecFactory.jsonOk())
+                .body(matchesJsonSchemaInClasspath("schemas/product.schema.json"));
         Product product = response.as(Product.class);
         assertEquals(product.id(), 1);
         assertNotNull(product.dimensions());
@@ -54,10 +65,9 @@ public class ProductApiClientTest {
         assertNotNull(product.images());
     }
 
-    @Test
-    public void productCreateSerializesRequestAndDeserializesResponse() {
-        CreateProductRequest request = new CreateProductRequest(
-                "Framework test product", "Created through REST Assured", "beauty", 19.99);
+    @Test(dataProvider = "productCreationRequests", dataProviderClass = ProductTestData.class,
+            groups = {"regression"})
+    public void productCreateSerializesRequestAndDeserializesResponse(CreateProductRequest request) {
         var response = products.create(request);
         response.then().statusCode(201);
         assertEquals(response.jsonPath().getString("title"), request.title());
@@ -65,7 +75,7 @@ public class ProductApiClientTest {
         // DummyJSON simulates this write; it does not persist the product.
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression"})
     public void loginAndCurrentUserUseManagedBearerToken() {
         var login = auth.login(username, password, 1);
         login.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/auth-login.schema.json"));
@@ -75,7 +85,7 @@ public class ProductApiClientTest {
         assertEquals(me.jsonPath().getString("username"), username);
     }
 
-    @Test(dependsOnMethods = "loginAndCurrentUserUseManagedBearerToken")
+    @Test(dependsOnMethods = "loginAndCurrentUserUseManagedBearerToken", groups = {"regression"})
     public void refreshEndpointRotatesTokenPair() {
         String oldAccessToken = tokens.accessToken();
         String newAccessToken = tokens.refreshAccessToken(oldAccessToken);
@@ -84,7 +94,7 @@ public class ProductApiClientTest {
         auth.currentUser(newAccessToken).then().statusCode(200);
     }
 
-    @Test(timeOut = 90000)
+    @Test(timeOut = 90000, groups = {"regression"})
     public void expiredAccessTokenIsRefreshedAndOriginalRequestRetried() throws InterruptedException {
         TokenManager shortLivedTokens = new TokenManager(auth, username, password, 1);
         ProductApiClient authenticatedClient = new ProductApiClient(
