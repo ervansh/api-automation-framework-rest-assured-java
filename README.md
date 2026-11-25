@@ -8,7 +8,7 @@ A Java API test automation framework built with Maven, REST Assured, and TestNG.
 - Immutable framework configuration loaded from environment-specific properties.
 - Configuration overrides through JVM system properties and environment variables.
 - Shared REST Assured request-specification factory with configurable connection/read timeouts.
-- TestNG configuration tests.
+- TestNG configuration checks and a local HTTP self-test for the shared request factory.
 
 The framework is being built incrementally. Items in the architecture below are intended design boundaries; they are not claims that every capability is implemented.
 
@@ -43,7 +43,7 @@ src/
       client/       # Shared REST Assured request factory
       config/       # Immutable configuration and validation
   test/
-    java/           # TestNG tests
+    java/           # TestNG tests, including a local HTTP self-test
     resources/
       config/       # Environment properties
 ```
@@ -92,7 +92,7 @@ For each property, precedence is:
 
 The environment selector itself uses `-Dtest.environment`, then `TEST_ENVIRONMENT`, then defaults to `qa`.
 
-The checked-in `qa.properties` uses `https://example.invalid` as a non-routable placeholder. Set a real API base URI before adding/running integration tests. No live API is called by the current configuration test.
+The checked-in `qa.properties` uses `https://example.invalid` as a non-routable placeholder. The current tests use an in-process HTTP server and do not call a live API. Set a real API base URI before adding/running integration tests.
 
 ## Secrets and test safety
 
@@ -103,4 +103,4 @@ The checked-in `qa.properties` uses `https://example.invalid` as a non-routable 
 
 ## Next implementation increment
 
-Add service-specific API clients and DTOs, then a first end-to-end service test against a controlled test API. Cross-service workflows, reporting, and richer lifecycle support will be added as the suite grows.
+Add service-specific API clients and DTOs, then a first service-level test against a controlled test API. Cross-service workflows, reporting, and richer lifecycle support will be added as the suite grows.
