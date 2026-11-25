@@ -1,65 +1,106 @@
 # API Automation Framework (Java + REST Assured)
 
-A maintainable API test automation framework built with Java, REST Assured, TestNG, and Maven. The repository is intended for practical learning and for demonstrating production-oriented API automation design.
+A Java API test automation framework built with Maven, REST Assured, and TestNG. The repository is designed for realistic service-level API testing and cross-service business workflows.
 
-## Goals
+## Current implementation
 
-- Keep HTTP mechanics reusable and business/service operations readable.
-- Organize tests by service while supporting cross-service workflows.
-- Support environment-specific configuration without hard-coded URLs or credentials.
-- Make test data isolated and suitable for parallel execution.
-- Produce useful test reports while avoiding accidental exposure of secrets.
+- Maven project targeting Java 21.
+- Immutable framework configuration loaded from environment-specific properties.
+- Configuration overrides through JVM system properties and environment variables.
+- Shared REST Assured request-specification factory with configurable connection/read timeouts.
+- TestNG configuration tests.
 
-## Planned technology baseline
+The framework is being built incrementally. Items in the architecture below are intended design boundaries; they are not claims that every capability is implemented.
 
-- Java 21
-- Maven
-- REST Assured
-- TestNG
-- Jackson for JSON mapping
-- SLF4J with Logback for logging
-- Allure for test reporting
+## Technology baseline
 
-Dependency versions will be managed centrally in the Maven build and documented as implementation is added.
+| Component | Version |
+|---|---|
+| Java | 21 |
+| REST Assured | 6.3.0 |
+| TestNG | 7.9.0 |
+| Maven Compiler Plugin | 3.14.1 |
+| Maven Surefire Plugin | 3.6.1 |
 
-## Architecture
+Versions are centralized in `pom.xml`.
 
-The framework is organized into these responsibilities:
+## Architecture and boundaries
 
-1. **Tests** — TestNG scenarios and assertions.
-2. **Workflows** — business journeys that coordinate multiple services when needed.
-3. **Service clients** — service-specific endpoints and request/response models.
-4. **HTTP client** — shared REST Assured request execution and common specifications.
+1. **Tests** — TestNG scenarios and business assertions.
+2. **Workflows** — optional orchestration for journeys spanning multiple services.
+3. **Service clients** — endpoint paths, request/response models, and service-specific operations.
+4. **HTTP client** — reusable REST Assured request creation and common transport settings.
 5. **Core support** — configuration, authentication, test data, logging, and lifecycle support.
 
-Tests should not use REST Assured directly. Assertions belong in tests, not in the shared HTTP client.
+Tests should not use REST Assured directly. Assertions belong in tests, not in the shared HTTP client. Add interfaces only where an alternate implementation or a meaningful boundary justifies one.
 
-## Repository status
+## Repository layout
 
-The framework is being implemented incrementally. This README will be updated as components become available. Do not assume a feature is implemented merely because it appears in the architecture goals.
+```text
+src/
+  main/java/com/ervansh/apiautomation/
+    core/
+      client/       # Shared REST Assured request factory
+      config/       # Immutable configuration and validation
+  test/
+    java/           # TestNG tests
+    resources/
+      config/       # Environment properties
+```
 
 ## Prerequisites
 
 - JDK 21
 - Maven 3.9 or later
-- Git
 
-## Build and test
+Verify the active toolchain:
 
-Once the Maven project is added:
+```bash
+java -version
+mvn -version
+```
+
+## Build and run tests
 
 ```bash
 mvn clean verify
 ```
 
-Environment-specific execution and configuration instructions will be documented here when the configuration files and test suite are in place.
+Select an environment using `-Dtest.environment=<name>`; the matching file must exist at `src/test/resources/config/<name>.properties`.
 
-## Configuration and secrets
+For example:
 
-Environment URLs and non-sensitive settings belong in configuration files. Credentials, tokens, and other secrets must be supplied through environment variables or a secrets manager; do not commit them to the repository.
+```bash
+mvn clean verify -Dtest.environment=qa
+```
 
-## Contribution notes
+## Configuration
 
-- Keep service-specific behavior in service clients or workflows, not in the generic HTTP layer.
-- Avoid shared mutable state between tests.
-- Add or update tests and documentation with each framework capability.
+The default environment is `qa`. Current properties:
+
+| Property | Purpose |
+|---|---|
+| `api.baseUri` | API base URI |
+| `api.connectTimeoutMillis` | Connection timeout in milliseconds |
+| `api.readTimeoutMillis` | Read/socket timeout in milliseconds |
+
+For each property, precedence is:
+
+1. JVM system property (for example, `-Dapi.baseUri=https://host`)
+2. Environment variable (for example, `API_BASE_URI`)
+3. Selected properties file
+
+The environment selector itself uses `-Dtest.environment`, then `TEST_ENVIRONMENT`, then defaults to `qa`.
+
+The checked-in `qa.properties` uses `https://example.invalid` as a non-routable placeholder. Set a real API base URI before adding/running integration tests. No live API is called by the current configuration test.
+
+## Secrets and test safety
+
+- Never commit credentials, access tokens, or other secrets.
+- Supply secrets through environment variables or a secrets manager.
+- Do not disable TLS certificate validation for normal test execution.
+- Avoid shared mutable request/response state between parallel tests.
+
+## Next implementation increment
+
+Add service-specific API clients and DTOs, then a first end-to-end service test against a controlled test API. Cross-service workflows, reporting, and richer lifecycle support will be added as the suite grows.
