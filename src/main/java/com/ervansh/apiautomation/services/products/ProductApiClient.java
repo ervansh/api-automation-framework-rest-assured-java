@@ -9,18 +9,20 @@ import io.restassured.response.Response;
 public final class ProductApiClient {
     private final ApiClient api;
     private final TokenManager tokenManager;
+    private final com.ervansh.apiautomation.core.client.RequestSpecFactory requests;
 
     public ProductApiClient(ApiClient api, TokenManager tokenManager) {
         this.api = api;
         this.tokenManager = tokenManager;
+        this.requests = new com.ervansh.apiautomation.core.client.RequestSpecFactory(api);
     }
 
     public Response getById(int productId) {
-        return api.request().pathParam("productId", productId).get("/products/{productId}");
+        return requests.json().pathParam("productId", productId).get("/products/{productId}");
     }
 
     public Response getAll(int limit, int skip) {
-        return api.request().queryParam("limit", limit).queryParam("skip", skip).get("/products");
+        return requests.json().queryParam("limit", limit).queryParam("skip", skip).get("/products");
     }
 
     public Response search(String query) {
@@ -28,10 +30,10 @@ public final class ProductApiClient {
     }
 
     public Response create(CreateProductRequest product) {
-        return api.request().body(product).post("/products/add");
+        return requests.json().body(product).post("/products/add");
     }
 
     public Response getCurrentUser() {
-        return api.authenticatedRequest(tokenManager).get("/auth/me");
+        return requests.authenticatedJson(tokenManager).get("/auth/me");
     }
 }
