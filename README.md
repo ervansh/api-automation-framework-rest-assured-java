@@ -21,7 +21,7 @@ A Java 21, Maven, REST Assured and TestNG framework using the publicly hosted **
 | TestNG | 7.9.0 |
 | Jackson Databind | 2.23.0 |
 | Maven Compiler Plugin | 3.14.1 |
-| Maven Surefire Plugin | 3.6.1 |
+| Maven Surefire Plugin | 3.5.4 |
 
 Versions are centralized in `pom.xml`.
 
