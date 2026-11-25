@@ -36,8 +36,14 @@ public final class ApiClient {
                         .httpClient(httpClientConfig));
     }
 
-    /** Returns a fresh request specification with bearer authorization applied. */
+    /** Applies a static bearer token supplied through environment/JVM configuration. */
     public RequestSpecification authenticatedRequest() {
         return bearerTokenProvider.apply(request());
+    }
+
+    /** Applies managed bearer authentication with a single 401 refresh-and-retry. */
+    public RequestSpecification authenticatedRequest(
+            com.ervansh.apiautomation.core.auth.TokenManager tokenManager) {
+        return request().filter(new com.ervansh.apiautomation.core.auth.TokenRefreshFilter(tokenManager));
     }
 }
