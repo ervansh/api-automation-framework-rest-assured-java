@@ -17,17 +17,19 @@ public class ProductApiClientTest {
     private ProductApiClient products;
     private AuthApiClient auth;
     private TokenManager tokens;
+    private String username;
+    private String password;
 
     @BeforeClass
     public void setUp() {
         FrameworkConfig config = FrameworkConfig.load();
         ApiClient api = new ApiClient(config);
         auth = new AuthApiClient(api);
-        tokens = new TokenManager(auth,
-                System.getProperty("api.test.username", System.getenv().getOrDefault("API_TEST_USERNAME", "emilys")),
-                System.getProperty("api.test.password", System.getenv().getOrDefault("API_TEST_PASSWORD", "emilyspass")),
-                Integer.parseInt(System.getProperty("api.test.tokenLifetimeMinutes",
-                        System.getenv().getOrDefault("API_TEST_TOKEN_LIFETIME_MINUTES", "1"))));
+        username = System.getProperty("api.test.username", System.getenv().getOrDefault("API_TEST_USERNAME", "emilys"));
+        password = System.getProperty("api.test.password", System.getenv().getOrDefault("API_TEST_PASSWORD", "emilyspass"));
+        int lifetime = Integer.parseInt(System.getProperty("api.test.tokenLifetimeMinutes",
+                System.getenv().getOrDefault("API_TEST_TOKEN_LIFETIME_MINUTES", "1")));
+        tokens = new TokenManager(auth, username, password, lifetime);
         products = new ProductApiClient(api, tokens);
     }
 
@@ -65,12 +67,12 @@ public class ProductApiClientTest {
 
     @Test
     public void loginAndCurrentUserUseManagedBearerToken() {
-        var login = auth.login("emilys", "emilyspass", 1);
+        var login = auth.login(username, password, 1);
         login.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/auth-login.schema.json"));
         assertNotNull(tokens.accessToken());
         var me = products.getCurrentUser();
         me.then().statusCode(200);
-        assertEquals(me.jsonPath().getString("username"), "emilys");
+        assertEquals(me.jsonPath().getString("username"), username);
     }
 
     @Test(dependsOnMethods = "loginAndCurrentUserUseManagedBearerToken")
@@ -80,5 +82,17 @@ public class ProductApiClientTest {
         assertNotNull(newAccessToken);
         assertNotEquals(newAccessToken, oldAccessToken);
         auth.currentUser(newAccessToken).then().statusCode(200);
+    }
+
+    @Test(timeOut = 90000)
+    public void expiredAccessTokenIsRefreshedAndOriginalRequestRetried() throws InterruptedException {
+        TokenManager shortLivedTokens = new TokenManager(auth, username, password, 1);
+        ProductApiClient authenticatedClient = new ProductApiClient(
+                new ApiClient(FrameworkConfig.load()), shortLivedTokens);
+        shortLivedTokens.accessToken();
+        Thread.sleep(65_000); // DummyJSON accepts expiresInMins=1; wait beyond its access-token lifetime.
+        var response = authenticatedClient.getCurrentUser();
+        response.then().statusCode(200);
+        assertEquals(response.jsonPath().getString("username"), username);
     }
 }
