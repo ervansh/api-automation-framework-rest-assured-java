@@ -1,14 +1,15 @@
 package com.ervansh.apiautomation.core.client;
 
-import com.ervansh.apiautomation.core.auth.TokenManager;
-import com.ervansh.apiautomation.core.auth.TokenRefreshFilter;
 import com.ervansh.apiautomation.core.config.FrameworkConfig;
 import io.restassured.config.HttpClientConfig;
 import io.restassured.specification.RequestSpecification;
 
 import static io.restassured.RestAssured.given;
 
-/** Creates isolated REST Assured request specifications for individual operations. */
+/**
+ * Creates an isolated REST Assured request specification for one operation.
+ * Service clients should build endpoint-specific requests on top of this class.
+ */
 public final class ApiClient {
     private final FrameworkConfig config;
     private final BearerTokenProvider bearerTokenProvider;
@@ -35,13 +36,14 @@ public final class ApiClient {
                         .httpClient(httpClientConfig));
     }
 
-    /** Legacy static-token helper retained for simple bearer-only integrations. */
+    /** Applies a static bearer token supplied through environment/JVM configuration. */
     public RequestSpecification authenticatedRequest() {
         return bearerTokenProvider.apply(request());
     }
 
-    /** Authenticated request with managed login, refresh and one-time 401 retry. */
-    public RequestSpecification authenticatedRequest(TokenManager tokenManager) {
-        return request().filter(new TokenRefreshFilter(tokenManager));
+    /** Applies managed bearer authentication with a single 401 refresh-and-retry. */
+    public RequestSpecification authenticatedRequest(
+            com.ervansh.apiautomation.core.auth.TokenManager tokenManager) {
+        return request().filter(new com.ervansh.apiautomation.core.auth.TokenRefreshFilter(tokenManager));
     }
 }

@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": ["id", "title", "description", "category", "price", "rating", "stock", "thumbnail", "images"],
+  "properties": {
+    "id": {"type": "integer", "minimum": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "category": {"type": "string"},
+    "price": {"type": "number", "minimum": 0},
+    "discountPercentage": {"type": "number"},
+    "rating": {"type": "number", "minimum": 0},
+    "stock": {"type": "integer", "minimum": 0},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "brand": {"type": ["string", "null"]},
+    "sku": {"type": "string"},
+    "weight": {"type": "number"},
+    "dimensions": {"type": "object", "required": ["width", "height", "depth"]},
+    "reviews": {"type": "array", "items": {"type": "object", "required": ["rating", "comment", "date", "reviewerName", "reviewerEmail"]}},
+    "returnPolicy": {"type": "string"},
+    "minimumOrderQuantity": {"type": "integer"},
+    "meta": {"type": "object", "required": ["createdAt", "updatedAt", "barcode", "qrCode"]},
+    "thumbnail": {"type": "string"},
+    "images": {"type": "array", "items": {"type": "string"}}
+  }
+}

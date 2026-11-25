@@ -1,0 +1,21 @@
+# Maven
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Local configuration and secrets
+.env
+.env.*
+!*.example
+config/local.properties
+config/*-local.properties
+
+# OS
+.DS_Store
+Thumbs.db
